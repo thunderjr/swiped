@@ -19,8 +19,12 @@ struct SwipedApp {
         for await frame in manager.touchDataStream {
             let touches = tracker.update(frame: frame)
             if let event = recognizer.process(touches: touches) {
+                fputs("swiped: detected \(event.fingerCount)-finger swipe \(event.direction)\n", stderr)
                 if let binding = config.binding(for: event) {
+                    fputs("swiped: executing \(binding.command)\n", stderr)
                     executor.execute(binding.command)
+                } else {
+                    fputs("swiped: no binding for gesture\n", stderr)
                 }
             }
         }
