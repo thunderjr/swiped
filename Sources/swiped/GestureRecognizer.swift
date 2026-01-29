@@ -34,31 +34,34 @@ final class GestureRecognizer {
             }
             return nil
 
-        case .possibleSwipe(let fingerIDs, let fingerCount):
+        case .possibleSwipe(var fingerIDs, _):
             let active = touches.filter { $0.state == .touching }
             let currentIDs = Set(active.map(\.id))
 
-            // Reset if finger set changed significantly
+            // Reset if any original fingers were lifted
             if !fingerIDs.isSubset(of: currentIDs) {
                 state = .idle
                 return nil
             }
 
-            // Check average velocity of tracked fingers
-            let tracked = active.filter { fingerIDs.contains($0.id) }
-            guard !tracked.isEmpty else {
+            // Include any newly added fingers
+            fingerIDs = currentIDs
+            state = .possibleSwipe(fingerIDs: fingerIDs, fingerCount: active.count)
+
+            // Check velocity of all active fingers
+            guard !active.isEmpty else {
                 state = .idle
                 return nil
             }
 
-            let avgVX = tracked.map(\.velocityX).reduce(0, +) / Float(tracked.count)
-            let avgVY = tracked.map(\.velocityY).reduce(0, +) / Float(tracked.count)
+            let avgVX = active.map(\.velocityX).reduce(0, +) / Float(active.count)
+            let avgVY = active.map(\.velocityY).reduce(0, +) / Float(active.count)
 
             let speed = max(abs(avgVX), abs(avgVY))
             if speed > velocityThreshold {
                 if let direction = SwipeDirection.classify(velocityX: avgVX, velocityY: avgVY) {
                     state = .cooldown(until: now + cooldownSeconds)
-                    return SwipeEvent(direction: direction, fingerCount: fingerCount)
+                    return SwipeEvent(direction: direction, fingerCount: active.count)
                 }
             }
             return nil
