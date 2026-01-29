@@ -33,16 +33,18 @@ struct Config: Codable {
         let dir = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
+        // Note: --no-stdin is required for AeroSpace when running without a TTY
+        // (e.g., from a launch agent). See: https://github.com/nikitabobko/AeroSpace/issues/1683
         let defaultConfig = Config(
             settings: Settings(),
             gestures: [
                 GestureBinding(
                     direction: .left, fingers: 3,
-                    command: ["/opt/homebrew/bin/aerospace", "workspace", "next"]
+                    command: ["/opt/homebrew/bin/aerospace", "--no-stdin", "workspace", "next"]
                 ),
                 GestureBinding(
                     direction: .right, fingers: 3,
-                    command: ["/opt/homebrew/bin/aerospace", "workspace", "prev"]
+                    command: ["/opt/homebrew/bin/aerospace", "--no-stdin", "workspace", "prev"]
                 ),
             ]
         )
