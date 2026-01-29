@@ -12,8 +12,27 @@ A macOS daemon that executes commands in response to trackpad swipe gestures.
 ```bash
 git clone https://github.com/yourusername/swiped.git
 cd swiped
+./install.sh
+```
+
+This builds swiped, installs the binary and framework, and sets up a launch agent to run it automatically.
+
+### Manual Installation
+
+If you prefer to install manually:
+
+```bash
 swift build -c release
+
+# Install binary and framework
 sudo cp .build/release/swiped /usr/local/bin/
+sudo cp -R .build/arm64-apple-macosx/release/OpenMultitouchSupportXCF.framework /usr/local/lib/
+
+# Relink binary to find the framework
+sudo install_name_tool -change \
+  @rpath/OpenMultitouchSupportXCF.framework/Versions/A/OpenMultitouchSupportXCF \
+  /usr/local/lib/OpenMultitouchSupportXCF.framework/Versions/A/OpenMultitouchSupportXCF \
+  /usr/local/bin/swiped
 ```
 
 ### Disable Default 3-Finger Gestures
@@ -47,13 +66,15 @@ cooldown_ms = 250         # Cooldown between gestures
 [[gestures]]
 direction = "left"
 fingers = 3
-command = ["/opt/homebrew/bin/aerospace", "workspace", "next"]
+command = ["/opt/homebrew/bin/aerospace", "--no-stdin", "workspace", "next"]
 
 [[gestures]]
 direction = "right"
 fingers = 3
-command = ["/opt/homebrew/bin/aerospace", "workspace", "prev"]
+command = ["/opt/homebrew/bin/aerospace", "--no-stdin", "workspace", "prev"]
 ```
+
+> **Note:** AeroSpace requires `--no-stdin` when running from a launch agent (non-TTY context). See [AeroSpace#1683](https://github.com/nikitabobko/AeroSpace/issues/1683).
 
 ### Options
 
@@ -67,32 +88,20 @@ Commands are executed directly without a shell wrapper.
 
 ## Running as a Launch Agent
 
-Create `~/Library/LaunchAgents/com.swiped.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.swiped</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/swiped</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-</dict>
-</plist>
-```
-
-Then load it:
+The `install.sh` script automatically sets up a launch agent. To manage it manually:
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.swiped.plist
+# Reload after changes
+launchctl kickstart -k gui/$(id -u)/com.swiped
+
+# Stop
+launchctl bootout gui/$(id -u)/com.swiped
+
+# Start
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.swiped.plist
 ```
+
+Logs are written to `/tmp/swiped.log`.
 
 ## How It Works
 
